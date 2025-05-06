@@ -1,0 +1,53 @@
+# .github/workflows/kaldi.yml
+name: kaldi-sale-checker
+
+on:
+  push:                     # ←これを足す
+    branches: [ main ]      #   好きなブランチ
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. リポジトリ取得
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # 2. 既読 DB をキャッシュから復元（無ければスルー）
+      - name: Restore seen.db
+        uses: actions/cache@v4
+        with:
+          path: seen.db          # 保存したいファイル/フォルダ
+          key: kaldi-seen-db     # 同じ key なら毎回上書き
+          restore-keys: |
+            kaldi-seen-db
+
+      # 3. Python を用意
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 4. 依存関係インストール
+      - name: Install requirements
+        run: |
+          pip install -r requirements.txt
+
+      # 5. スクレイパー実行
+      - name: Run scraper.py
+        env:
+          LINE_TOKEN:   ${{ secrets.LINE_TOKEN }}
+          LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+        run: |
+          python scraper.py
+
+      # 6. 実行後の DB をキャッシュに保存 / 更新
+      - name: Save seen.db
+        uses: actions/cache@v4
+        with:
+          path: seen.db
+          key: kaldi-seen-db
