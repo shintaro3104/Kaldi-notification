@@ -80,10 +80,10 @@ def push_line(msgs, page_url):
     text = HEADLINE + "\n\n".join(msgs) + f"\n\n🔗 一覧ページはこちら\n{page_url}"
 
     headers = {
-        "Authorization": f"Bearer {os.environ['LINE_TOKEN']}",
+        "Authorization": f"Bearer {os.environ['smALK3ukSM/5JJP4tZuKKgzeyFhrP1Z4XUuNHv5DU4tySgQkrflBO/Qaw/Lb8i8AEgTdqJ/KYRrRj8E6LWVnlBvgB+SBwf2zHgtbsdtPXASTL3Ifrj6IfWAXMwDKk7J9G0V5KvzBjUSMC5l/9FwYHwdB04t89/1O/w1cDnyilFU=']}",
         "Content-Type": "application/json",
     }
-    payload = {"to": os.environ["LINE_USER_ID"],
+    payload = {"to": os.environ["U2e99b09c0d4cefdd0e063d40070c9b2a"],
                "messages": [{"type": "text", "text": text}]}
     r = requests.post("https://api.line.me/v2/bot/message/push",
                       json=payload, headers=headers, timeout=10)
