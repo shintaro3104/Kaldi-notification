@@ -13,8 +13,8 @@ from bs4 import BeautifulSoup
 BASE_URL = "https://map.kaldi.co.jp/kaldi/articleList"
 DB_FILE  = "seen.db"
 
-# ───────── 店舗名部分一致（品川区内の例） ──────────
-KEYWORDS = ["浦和", "赤羽", "札幌", "川口", "レイクタウン"]
+# ───────── 店舗名部分一致（埼玉近辺の例） ──────────
+KEYWORDS = ["浦和", "赤羽", "川口", "レイクタウン"]
 # ──────────────────────────────────────────────
 
 HEADLINE = "☕️ KALDIの新着セール情報が届いたよ！\n\n"
