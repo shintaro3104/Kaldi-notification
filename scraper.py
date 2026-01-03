@@ -10,7 +10,7 @@ KALDI セール一覧をクロール
 import os, sqlite3, urllib.parse, requests, datetime, textwrap
 from bs4 import BeautifulSoup
 
-BASE_URL = "https://map.kaldi.co.jp/kaldi/articleList?account=kaldi&accmd=1&ftop=1&kkw001=2026-01-03T09%3A23%3A46"
+BASE_URL = "https://map.kaldi.co.jp/kaldi/articleList"
 DB_FILE  = "seen.db"
 
 # ───────── 店舗名部分一致（埼玉近辺の例） ──────────
