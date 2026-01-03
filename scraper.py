@@ -14,7 +14,7 @@ BASE_URL = "https://map.kaldi.co.jp/kaldi/articleList?account=kaldi&accmd=1&ftop
 DB_FILE  = "seen.db"
 
 # ───────── 店舗名部分一致（埼玉近辺の例） ──────────
-KEYWORDS = ["浦和", "赤羽", "川口", "レイクタウン"]
+KEYWORDS = ["浦和", "銀座", "川口", "レイクタウン"]
 # ──────────────────────────────────────────────
 
 HEADLINE = "☕️ KALDIの新着セール情報が届いたよ！\n\n"
