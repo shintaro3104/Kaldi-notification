@@ -8,11 +8,12 @@ on:
     - cron: '0 21 */3 * *'    # 3日おきJST 6:00頃 (UTC 21:00)
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   run:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout repo
@@ -22,7 +23,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: seen.db
-          key: kaldi-seen-db-${{ github.run_id }}
+          key: kaldi-seen-db-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             kaldi-seen-db-
 
@@ -44,7 +45,6 @@ jobs:
 
       - name: Save seen.db
         uses: actions/cache/save@v4
-        if: always()
         with:
           path: seen.db
-          key: kaldi-seen-db-${{ github.run_id }}
+          key: kaldi-seen-db-${{ github.run_id }}-${{ github.run_attempt }}
