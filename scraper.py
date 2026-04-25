@@ -7,17 +7,39 @@ KALDI セール一覧をクロール
   4) Push 冒頭に固定ヘッダ、末尾にセール一覧ページの URL
 """
 
-import os, sqlite3, urllib.parse, requests, datetime, textwrap
+import os
+import sqlite3
+import urllib.parse
+import requests
+import datetime
+import textwrap
+import logging
 from bs4 import BeautifulSoup
 
+# --- Configuration & Constants ---
 BASE_URL = "https://map.kaldi.co.jp/kaldi/articleList"
-DB_FILE  = "seen.db"
-
-# ───────── 店舗名部分一致（埼玉近辺の例） ──────────
+DB_FILE = "seen.db"
 KEYWORDS = ["浦和", "赤羽", "川口", "レイクタウン", "与野", "戸田", "銀座"]
-# ──────────────────────────────────────────────
-
 HEADLINE = "☕️ KALDIの新着セール情報が届いたよ！\n\n"
+
+# CSS Selectors (Centralized for easy updates)
+SELECTORS = {
+    "row": "table.cz_sp_table tr",
+    "name": "span.salename",
+    "address": "span.saleadress",
+    "title": "span.saletitle, span.saletitle_f",
+    "date": "p.saledate, p.saledate_f",
+    "detail": "p.saledetail",
+    "notes": "p.saledetail_notes",
+}
+
+# --- Setup Logging ---
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger(__name__)
 
 def build_url() -> str:
     """現在 JST のタイムスタンプを kkw001 に付けた URL を返す"""
@@ -27,78 +49,106 @@ def build_url() -> str:
     return f"{BASE_URL}?{urllib.parse.urlencode(params)}"
 
 def fetch_target_articles():
-    url  = build_url()
-    html = requests.get(url, timeout=15).text
-    soup = BeautifulSoup(html, "html.parser")
+    url = build_url()
+    logger.info(f"Fetching URL: {url}")
+    
+    try:
+        response = requests.get(url, timeout=15)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        logger.error(f"Failed to fetch Kaldi website: {e}")
+        return
 
-    for row in soup.select("table.cz_sp_table tr"):
-        name_tag = row.select_one("span.salename")
-        if not name_tag:
+    soup = BeautifulSoup(response.text, "html.parser")
+    rows = soup.select(SELECTORS["row"])
+    
+    if not rows:
+        logger.warning(f"No rows found using selector '{SELECTORS['row']}'. Has the website layout changed?")
+        return
+
+    logger.info(f"Found {len(rows)} table rows. Processing...")
+
+    for row in rows:
+        try:
+            name_tag = row.select_one(SELECTORS["name"])
+            if not name_tag:
+                continue
+            
+            store = name_tag.text.strip()
+            
+            # 店舗名が KEYWORDS のどれにもヒットしなければスキップ
+            if not any(k in store for k in KEYWORDS):
+                continue
+
+            def get_text(selector, default=""):
+                el = row.select_one(selector)
+                return el.text.strip() if el else default
+
+            addr = get_text(SELECTORS["address"])
+            title = get_text(SELECTORS["title"])
+            term = get_text(SELECTORS["date"])
+            detail = get_text(SELECTORS["detail"])
+            notes = get_text(SELECTORS["notes"])
+
+            body = textwrap.dedent(f"""\
+                🛒 {store}
+                {addr}
+                {title}（{term}）
+                {detail}
+                {notes}""").rstrip()
+
+            art_id = f"{store}_{term}"
+            yield art_id, body, url
+            
+        except Exception as e:
+            logger.error(f"Error parsing a row: {e}")
             continue
-        store = name_tag.text.strip()
-
-        if not any(k in store for k in KEYWORDS):
-            continue
-
-        # ── 必要な要素を抽出（存在しない場合に備えてガードを入れる） ───────────────────
-        def get_text(selector, default=""):
-            el = row.select_one(selector)
-            return el.text.strip() if el else default
-
-        addr  = get_text("span.saleadress")
-        title = get_text("span.saletitle, span.saletitle_f")
-        term  = get_text("p.saledate, p.saledate_f")
-        detail = get_text("p.saledetail")
-        notes  = get_text("p.saledetail_notes")
-
-        # 1店舗ぶんのテキスト
-        body = textwrap.dedent(f"""\
-            🛒 {store}
-            {addr}
-            {title}（{term}）
-            {detail}
-            {notes}""").rstrip()
-
-        art_id = f"{store}_{term}"
-        yield art_id, body, url            # ← url は末尾リンク用に返す
 
 def diff_since_last_run(records):
-    conn = sqlite3.connect(DB_FILE)
-    conn.execute("CREATE TABLE IF NOT EXISTS seen(id TEXT PRIMARY KEY)")
-    new_msgs, page_url = [], None
-    for art_id, msg, url in records:
-        if not conn.execute("SELECT 1 FROM seen WHERE id=?", (art_id,)).fetchone():
-            new_msgs.append(msg)
-            conn.execute("INSERT INTO seen(id) VALUES(?)", (art_id,))
-        page_url = url                     # 同じ URL が続くので最後の値で OK
-    conn.commit(); conn.close()
+    new_msgs = []
+    page_url = None
+
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS seen(id TEXT PRIMARY KEY)")
+            for art_id, msg, url in records:
+                exists = conn.execute("SELECT 1 FROM seen WHERE id=?", (art_id,)).fetchone()
+                if not exists:
+                    new_msgs.append(msg)
+                    conn.execute("INSERT INTO seen(id) VALUES(?)", (art_id,))
+                page_url = url
+            conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
+
     return new_msgs, page_url
 
 def broadcast_line(msgs, page_url):
     if not msgs:
-        print("No new sale info.")
+        logger.info("No new sale info to broadcast.")
         return
 
     token = os.environ.get("LINE_TOKEN")
     if not token:
-        print("LINE_TOKEN not set. Skipping broadcast.")
+        logger.warning("LINE_TOKEN not set. Skipping broadcast.")
         return
 
-    # ① ヘッダ ②店舗ごとの塊 ③末尾リンク を結合
     text = HEADLINE + "\n\n".join(msgs) + f"\n\n🔗 一覧ページはこちら\n{page_url}"
 
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
-    # Broadcastは to が不要（友だち全員宛て）
     payload = {"messages": [{"type": "text", "text": text}]}
 
-    r = requests.post("https://api.line.me/v2/bot/message/broadcast",
-                      json=payload, headers=headers, timeout=10)
-    r.raise_for_status()
-    print(f"Broadcasted {len(msgs)} sale(s).")
+    try:
+        r = requests.post("https://api.line.me/v2/bot/message/broadcast",
+                          json=payload, headers=headers, timeout=10)
+        r.raise_for_status()
+        logger.info(f"Successfully broadcasted {len(msgs)} sale(s).")
+    except requests.RequestException as e:
+        logger.error(f"Failed to broadcast to LINE: {e}")
 
 if __name__ == "__main__":
-    fresh, page = diff_since_last_run(fetch_target_articles())
-    broadcast_line(fresh, page)
+    fresh_msgs, list_page_url = diff_since_last_run(fetch_target_articles())
+    broadcast_line(fresh_msgs, list_page_url)
