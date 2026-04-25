@@ -20,9 +20,9 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: seen.db
-          key: kaldi-seen-db-${{ github.run_id }}-${{ github.run_attempt }}
+          key: kaldi-seen-db-v2-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            kaldi-seen-db-
+            kaldi-seen-db-v2-
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -43,4 +43,4 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: seen.db
-          key: kaldi-seen-db-${{ github.run_id }}-${{ github.run_attempt }}
+          key: kaldi-seen-db-v2-${{ github.run_id }}-${{ github.run_attempt }}
