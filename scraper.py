@@ -14,7 +14,7 @@ BASE_URL = "https://map.kaldi.co.jp/kaldi/articleList"
 DB_FILE  = "seen.db"
 
 # ───────── 店舗名部分一致（埼玉近辺の例） ──────────
-KEYWORDS = ["浦和", "銀座", "川口", "レイクタウン"]
+KEYWORDS = ["浦和", "赤羽", "川口", "レイクタウン", "与野", "戸田", "銀座"]
 # ──────────────────────────────────────────────
 
 HEADLINE = "☕️ KALDIの新着セール情報が届いたよ！\n\n"
@@ -74,24 +74,31 @@ def diff_since_last_run(records):
     conn.commit(); conn.close()
     return new_msgs, page_url
 
-def push_line(msgs, page_url):
+def broadcast_line(msgs, page_url):
     if not msgs:
         print("No new sale info.")
         return
+
+    token = os.environ.get("LINE_TOKEN")
+    if not token:
+        print("LINE_TOKEN not set. Skipping broadcast.")
+        return
+
     # ① ヘッダ ②店舗ごとの塊 ③末尾リンク を結合
     text = HEADLINE + "\n\n".join(msgs) + f"\n\n🔗 一覧ページはこちら\n{page_url}"
 
     headers = {
-        "Authorization": f"Bearer {os.environ['LINE_TOKEN']}",
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
-    payload = {"to": os.environ["LINE_USER_ID"],
-               "messages": [{"type": "text", "text": text}]}
-    r = requests.post("https://api.line.me/v2/bot/message/push",
+    # Broadcastは to が不要（友だち全員宛て）
+    payload = {"messages": [{"type": "text", "text": text}]}
+
+    r = requests.post("https://api.line.me/v2/bot/message/broadcast",
                       json=payload, headers=headers, timeout=10)
     r.raise_for_status()
-    print(f"Pushed {len(msgs)} sale(s) to LINE.")
+    print(f"Broadcasted {len(msgs)} sale(s).")
 
 if __name__ == "__main__":
     fresh, page = diff_since_last_run(fetch_target_articles())
-    push_line(fresh, page)
+    broadcast_line(fresh, page)
