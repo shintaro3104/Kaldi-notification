@@ -8,19 +8,16 @@ on:
     - cron: '0 21 */3 * *'    # 3日おきJST 6:00頃 (UTC 21:00)
   workflow_dispatch:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   run:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Restore seen.db
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: seen.db
           key: kaldi-seen-db-${{ github.run_id }}-${{ github.run_attempt }}
@@ -28,7 +25,7 @@ jobs:
             kaldi-seen-db-
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -39,12 +36,11 @@ jobs:
       - name: Run scraper.py
         env:
           LINE_TOKEN:   ${{ secrets.LINE_TOKEN }}
-          LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
         run: |
           python scraper.py
 
       - name: Save seen.db
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: seen.db
           key: kaldi-seen-db-${{ github.run_id }}-${{ github.run_attempt }}
