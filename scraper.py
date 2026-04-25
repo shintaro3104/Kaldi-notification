@@ -19,7 +19,7 @@ from bs4 import BeautifulSoup
 # --- Configuration & Constants ---
 BASE_URL = "https://map.kaldi.co.jp/kaldi/articleList"
 DB_FILE = "seen.db"
-KEYWORDS = ["浦和", "レイクタウン", "与野", "戸田", "北海道"]
+KEYWORDS = ["浦和", "レイクタウン", "与野", "戸田", "旭川"]
 HEADLINE = "☕️ KALDIの新着セール情報が届いたよ！\n\n"
 
 # CSS Selectors (Centralized for easy updates)
