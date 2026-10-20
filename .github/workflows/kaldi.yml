@@ -37,6 +37,7 @@ jobs:
         env:
           LINE_TOKEN:   ${{ secrets.LINE_TOKEN }}
         run: |
+          python -m unittest -q
           python scraper.py
 
       - name: Save seen.db
